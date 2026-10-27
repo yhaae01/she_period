@@ -4,14 +4,99 @@ import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:she_period/data/cycle_repository.dart';
+import 'package:she_period/home_shell.dart';
 import 'package:she_period/main.dart';
+import 'package:she_period/pages/onboarding_page.dart';
+import 'package:she_period/pages/splash_screen.dart';
 import 'package:she_period/utils/date_format_id.dart';
 import 'package:she_period/widgets/cute_mascot.dart';
 
 void main() {
-  testWidgets('Dashboard: sapaan, ring, catatan, lalu pindah ke kalender',
+  testWidgets('Pertama kali dibuka: splash -> onboarding -> dashboard',
       (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({});
+    final repository = await CycleRepository.load();
+
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(MyApp(repository: repository));
+
+    // splash screen tampil dengan loading pink
+    expect(find.byType(SplashScreen), findsOneWidget);
+    expect(find.text('ShePeriod'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(repository.onboardingDone, isFalse);
+
+    // setelah ~2,5 detik -> halaman onboarding (belum pernah setup)
+    await tester.pump(const Duration(milliseconds: 2600));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(OnboardingPage), findsOneWidget);
+    expect(find.textContaining('Kenalan dulu'), findsOneWidget);
+
+    // isi form: nama & usia
+    await tester.enterText(find.byKey(const Key('onboard-name')), 'Putri');
+    await tester.enterText(find.byKey(const Key('onboard-age')), '26');
+    await tester.pump(const Duration(milliseconds: 250));
+
+    // panjang siklus bisa disesuaikan (28 -> 29)
+    await tester.ensureVisible(find.byKey(const Key('onboard-cycle-plus')));
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.tap(find.byKey(const Key('onboard-cycle-plus')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('29 hari'), findsOneWidget);
+
+    // HPHT lewat date picker bawaan (default = hari ini)
+    await tester.ensureVisible(find.byKey(const Key('onboard-hpht')));
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.tap(find.byKey(const Key('onboard-hpht')));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Oke'), findsOneWidget);
+    await tester.tap(find.text('Oke'));
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.textContaining('HPHT:'), findsOneWidget);
+
+    // tanpa nama -> ditolak dengan snackbar
+    await tester.ensureVisible(find.byKey(const Key('onboard-submit')));
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.enterText(find.byKey(const Key('onboard-name')), '');
+    await tester.tap(find.byKey(const Key('onboard-submit')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.textContaining('Isi namamu dulu'), findsOneWidget);
+    expect(repository.onboardingDone, isFalse);
+
+    // isi nama lagi lalu submit -> masuk dashboard
+    await tester.enterText(find.byKey(const Key('onboard-name')), 'Putri');
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.tap(find.byKey(const Key('onboard-submit')));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.byType(HomeShell), findsOneWidget);
+    expect(find.textContaining('Halo Cantik'), findsOneWidget);
+
+    // data terkunci di SharedPreferences
+    expect(repository.onboardingDone, isTrue);
+    expect(repository.userName, 'Putri');
+    expect(repository.userAge, 26);
+    expect(repository.cycleLength, 29);
+    expect(repository.periodStart, repository.today);
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('onboarding_done'), isTrue);
+    expect(prefs.getString('user_name'), 'Putri');
+    expect(prefs.getInt('user_age'), 26);
+
+    // aplikasi dibuka ulang -> langsung dashboard, tanpa onboarding lagi
+    final again = await CycleRepository.load();
+    expect(again.onboardingDone, isTrue);
+  });
+
+  testWidgets('Dashboard: sapaan, ring, catatan, lalu pindah ke kalender',
+      (WidgetTester tester) async {
+    SharedPreferences.setMockInitialValues({'onboarding_done': true});
     final repository = await CycleRepository.load();
 
     // ukuran layar seperti ponsel
@@ -20,6 +105,11 @@ void main() {
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(MyApp(repository: repository));
+
+    // splash screen dulu, lalu (onboarding sudah selesai) ke dashboard
+    expect(find.byType(SplashScreen), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 2600));
+    await tester.pump(const Duration(milliseconds: 500));
 
     // sapaan harian, maskot, & lingkaran siklus
     expect(find.textContaining('Halo Cantik'), findsOneWidget);

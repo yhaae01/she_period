@@ -37,6 +37,8 @@ class CycleRepository extends ChangeNotifier {
         _cycleLength = 28,
         _periodLength = 5,
         _notificationsEnabled = true,
+        _onboardingDone = false,
+        _userName = '',
         _notes = <String, DayNote>{} {
     _read();
   }
@@ -53,6 +55,9 @@ class CycleRepository extends ChangeNotifier {
   static const _kNotes = 'day_notes';
   static const _kHistory = 'period_history';
   static const _kNotificationsEnabled = 'notifications_enabled';
+  static const _kOnboardingDone = 'onboarding_done';
+  static const _kUserName = 'user_name';
+  static const _kUserAge = 'user_age';
 
   /// Batas pengaturan siklus & lama haid.
   static const minCycleLength = 21;
@@ -69,6 +74,9 @@ class CycleRepository extends ChangeNotifier {
   int _cycleLength;
   int _periodLength;
   bool _notificationsEnabled;
+  bool _onboardingDone;
+  String _userName;
+  int? _userAge;
   final Map<String, DayNote> _notes;
   final List<DateTime> _history = <DateTime>[];
 
@@ -106,6 +114,11 @@ class CycleRepository extends ChangeNotifier {
     }
 
     _notificationsEnabled = _prefs.getBool(_kNotificationsEnabled) ?? true;
+
+    // status onboarding & profil
+    _onboardingDone = _prefs.getBool(_kOnboardingDone) ?? false;
+    _userName = _prefs.getString(_kUserName) ?? '';
+    _userAge = _prefs.getInt(_kUserAge);
 
     // riwayat HPHT
     _history.clear();
@@ -152,6 +165,15 @@ class CycleRepository extends ChangeNotifier {
   int get periodLength => _periodLength;
   bool get notificationsEnabled => _notificationsEnabled;
 
+  /// Apakah pengguna sudah menyelesaikan layar Onboarding.
+  bool get onboardingDone => _onboardingDone;
+
+  /// Nama pengguna (dari layar Onboarding).
+  String get userName => _userName;
+
+  /// Usia pengguna (dari layar Onboarding).
+  int? get userAge => _userAge;
+
   /// Riwayat HPHT (tanggal hari pertama haid), terbaru di depan.
   List<DateTime> get history => List.unmodifiable(_history);
 
@@ -170,6 +192,25 @@ class CycleRepository extends ChangeNotifier {
     if (next == _periodLength) return;
     _periodLength = next;
     _persist();
+    notifyListeners();
+  }
+
+  /// Selesaikan Onboarding: kunci data diri + HPHT + panjang siklus
+  /// ke SharedPreferences, lalu tandai setup selesai.
+  void completeOnboarding({
+    required String name,
+    required int age,
+    required DateTime hpht,
+    required int cycleLength,
+  }) {
+    _onboardingDone = true;
+    _userName = name.trim();
+    _userAge = age;
+    _prefs.setBool(_kOnboardingDone, true);
+    _prefs.setString(_kUserName, _userName);
+    _prefs.setInt(_kUserAge, age);
+    markPeriodStart(hpht);
+    setCycleLength(cycleLength);
     notifyListeners();
   }
 

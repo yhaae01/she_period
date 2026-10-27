@@ -9,7 +9,7 @@ void main() {
   for (final size in const [Size(320, 570), Size(412, 915)]) {
     testWidgets('tanpa overflow di ${size.width}x${size.height}',
         (WidgetTester tester) async {
-      SharedPreferences.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues({'onboarding_done': true});
       final repository = await CycleRepository.load();
 
       tester.view.physicalSize = size;
@@ -17,7 +17,9 @@ void main() {
       addTearDown(tester.view.reset);
 
       await tester.pumpWidget(MyApp(repository: repository));
-      await tester.pump(const Duration(milliseconds: 400));
+      // lewati splash screen (±2,5 detik) menuju dashboard
+      await tester.pump(const Duration(milliseconds: 2600));
+      await tester.pump(const Duration(milliseconds: 500));
 
       // gulir dashboard sampai bawah untuk memicu layout semua bagiannya
       await tester.drag(

@@ -3,7 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
 
 import 'data/cycle_repository.dart';
-import 'home_shell.dart';
+import 'pages/splash_screen.dart';
 import 'services/notification_service.dart';
 import 'theme/pink_theme.dart';
 
@@ -32,7 +32,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'She Period',
+      title: 'ShePeriod',
       debugShowCheckedModeBanner: false,
       theme: buildPinkTheme(),
       // tanggal & teks bawaan (date picker) berbahasa Indonesia
@@ -43,7 +43,8 @@ class MyApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: HomeShell(repository: repository),
+      // splash screen -> onboarding (pertama kali) / dashboard
+      home: SplashScreen(repository: repository),
     );
   }
 }
