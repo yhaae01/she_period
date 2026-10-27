@@ -36,6 +36,7 @@ class CycleRepository extends ChangeNotifier {
       : _periodStart = DateTime.now().subtract(const Duration(days: 13)),
         _cycleLength = 28,
         _periodLength = 5,
+        _notificationsEnabled = true,
         _notes = <String, DayNote>{} {
     _read();
   }
@@ -50,13 +51,26 @@ class CycleRepository extends ChangeNotifier {
   static const _kCycleLength = 'cycle_length';
   static const _kPeriodLength = 'period_length';
   static const _kNotes = 'day_notes';
+  static const _kHistory = 'period_history';
+  static const _kNotificationsEnabled = 'notifications_enabled';
+
+  /// Batas pengaturan siklus & lama haid.
+  static const minCycleLength = 21;
+  static const maxCycleLength = 45;
+  static const minPeriodLength = 1;
+  static const maxPeriodLength = 10;
+
+  static int _clamp(int value, int min, int max) =>
+      value < min ? min : (value > max ? max : value);
 
   final SharedPreferences _prefs;
 
   DateTime _periodStart;
   int _cycleLength;
   int _periodLength;
+  bool _notificationsEnabled;
   final Map<String, DayNote> _notes;
+  final List<DateTime> _history = <DateTime>[];
 
   static String dateKey(DateTime date) =>
       '${date.year}-${date.month.toString().padLeft(2, '0')}-'
@@ -90,6 +104,30 @@ class CycleRepository extends ChangeNotifier {
         _notes.clear();
       }
     }
+
+    _notificationsEnabled = _prefs.getBool(_kNotificationsEnabled) ?? true;
+
+    // riwayat HPHT
+    _history.clear();
+    final rawHistory = _prefs.getString(_kHistory);
+    if (rawHistory != null && rawHistory.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(rawHistory) as List<dynamic>;
+        _history.addAll(decoded
+            .map((e) => _onlyDate(DateTime.parse(e as String))));
+      } on FormatException {
+        _history.clear();
+      }
+    }
+    if (!_history.contains(_periodStart)) _history.add(_periodStart);
+    _sortHistory();
+  }
+
+  void _sortHistory() {
+    _history.sort((a, b) => b.compareTo(a));
+    if (_history.length > 36) {
+      _history.removeRange(36, _history.length);
+    }
   }
 
   /// Semua nilai ditulis sinkron ke cache [SharedPreferences]
@@ -100,6 +138,11 @@ class CycleRepository extends ChangeNotifier {
     _prefs.setString(_kPeriodStart, _periodStart.toIso8601String());
     _prefs.setInt(_kCycleLength, _cycleLength);
     _prefs.setInt(_kPeriodLength, _periodLength);
+    _prefs.setString(
+      _kHistory,
+      jsonEncode(_history.map((d) => d.toIso8601String()).toList()),
+    );
+    _prefs.setBool(_kNotificationsEnabled, _notificationsEnabled);
   }
 
   // ------------------------------------------------------------- getters
@@ -107,6 +150,42 @@ class CycleRepository extends ChangeNotifier {
   DateTime get periodStart => _periodStart;
   int get cycleLength => _cycleLength;
   int get periodLength => _periodLength;
+  bool get notificationsEnabled => _notificationsEnabled;
+
+  /// Riwayat HPHT (tanggal hari pertama haid), terbaru di depan.
+  List<DateTime> get history => List.unmodifiable(_history);
+
+  /// Ubah panjang siklus (rata-rata), mis. 28 atau 30 hari.
+  void setCycleLength(int value) {
+    final next = _clamp(value, minCycleLength, maxCycleLength);
+    if (next == _cycleLength) return;
+    _cycleLength = next;
+    _persist();
+    notifyListeners();
+  }
+
+  /// Ubah lama haid, mis. 5 hari.
+  void setPeriodLength(int value) {
+    final next = _clamp(value, minPeriodLength, maxPeriodLength);
+    if (next == _periodLength) return;
+    _periodLength = next;
+    _persist();
+    notifyListeners();
+  }
+
+  /// Kembalikan ke default: siklus 28 hari, haid 5 hari.
+  void resetCycleSettings() {
+    setCycleLength(28);
+    setPeriodLength(5);
+  }
+
+  /// Nyalakan / matikan pengingat.
+  void setNotificationsEnabled(bool enabled) {
+    if (enabled == _notificationsEnabled) return;
+    _notificationsEnabled = enabled;
+    _persist();
+    notifyListeners();
+  }
   DateTime get today => _onlyDate(DateTime.now());
 
   /// Hari ke berapa siklus untuk tanggal [date] (1 = hari pertama haid).
@@ -161,11 +240,14 @@ class CycleRepository extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Tandai [date] sebagai hari pertama haid (menggeser prediksi siklus).
+  /// Tandai [date] sebagai hari pertama haid (menggeser prediksi siklus)
+  /// dan mencatatnya ke riwayat.
   void markPeriodStart(DateTime date) {
     final day = _onlyDate(date);
     if (day.isAfter(today)) return;
     _periodStart = day;
+    if (!_history.contains(day)) _history.add(day);
+    _sortHistory();
     _persist();
     notifyListeners();
   }

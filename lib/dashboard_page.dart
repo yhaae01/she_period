@@ -5,7 +5,6 @@ import 'models/cycle_phase.dart';
 import 'models/log_options.dart';
 import 'theme/pink_theme.dart';
 import 'utils/date_format_id.dart';
-import 'utils/hpht_picker.dart';
 import 'widgets/bounce_tap.dart';
 import 'widgets/cycle_ring.dart';
 import 'widgets/lottie_mascot.dart';
@@ -530,25 +529,6 @@ class _DashboardPageState extends State<DashboardPage> {
 
   // ---------------------------------------------------------- prediksi siklus
 
-  Future<void> _pickHpht() async {
-    final repo = widget.repository;
-    final picked = await pickHphtDate(
-      context,
-      initialDate: repo.periodStart,
-      lastDate: repo.today,
-    );
-    if (picked == null || !mounted) return;
-
-    repo.markPeriodStart(picked);
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('HPHT diperbarui: ${formatFullDate(picked)} 💗'),
-        ),
-      );
-  }
-
   Widget _buildPredictionCard(TextTheme textTheme) {
     final repo = widget.repository;
     final prediction = repo.predictions;
@@ -611,7 +591,8 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Dihitung otomatis dari tanggal haid terakhirmu 💗',
+            'Dihitung otomatis dari HPHT — ubah tanggalnya lewat tab '
+            'Kalender ya 📅',
             style: textTheme.bodySmall?.copyWith(color: PinkPalette.inkSoft),
           ),
           const SizedBox(height: 12),
@@ -653,30 +634,6 @@ class _DashboardPageState extends State<DashboardPage> {
               ],
             ),
           ],
-          const SizedBox(height: 16),
-          BounceTap(
-            minScale: 0.95,
-            onTap: _pickHpht,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [PinkPalette.lavender, PinkPalette.blush],
-                ),
-                borderRadius: BorderRadius.circular(kCuteRadius),
-                border: Border.all(color: PinkPalette.lavenderDeep),
-              ),
-              child: Text(
-                'Pilih tanggal haid terakhir 📅',
-                style: textTheme.titleSmall?.copyWith(
-                  color: PinkPalette.lavenderInk,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );

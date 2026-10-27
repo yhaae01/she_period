@@ -73,4 +73,68 @@ void main() {
     expect(repo.phaseOf(repo.today.add(const Duration(days: 4))),
         CyclePhase.follicular);
   });
+
+  test('pengaturan siklus custom: tersimpan & batas terkunci', () async {
+    final repo = await CycleRepository.load();
+
+    repo.setCycleLength(30);
+    repo.setPeriodLength(7);
+    expect(repo.cycleLength, 30);
+    expect(repo.periodLength, 7);
+
+    // batas atas/bawah
+    repo.setCycleLength(999);
+    expect(repo.cycleLength, CycleRepository.maxCycleLength);
+    repo.setCycleLength(1);
+    expect(repo.cycleLength, CycleRepository.minCycleLength);
+    repo.setPeriodLength(0);
+    expect(repo.periodLength, CycleRepository.minPeriodLength);
+
+    // reset ke default 28 / 5
+    repo.resetCycleSettings();
+    expect(repo.cycleLength, 28);
+    expect(repo.periodLength, 5);
+
+    // lama haid mempengaruhi prediksi tanggal di kalender
+    repo.setPeriodLength(7);
+    expect(
+      repo.isPredictedPeriodDay(repo.periodStart.add(const Duration(days: 5))),
+      isTrue,
+    );
+    expect(
+      repo.isPredictedPeriodDay(repo.periodStart.add(const Duration(days: 7))),
+      isFalse,
+    );
+
+    // pengaturan bertahan setelah aplikasi dibuka lagi
+    final reloaded = await CycleRepository.load();
+    expect(reloaded.periodLength, 7);
+  });
+
+  test('riwayat HPHT tercatat, terurut, dan tersimpan', () async {
+    final repo = await CycleRepository.load();
+    final today = repo.today;
+    final initial = today.subtract(const Duration(days: 13));
+
+    expect(repo.history, [initial]);
+
+    final older = today.subtract(const Duration(days: 45));
+    repo.markPeriodStart(older);
+
+    expect(repo.history.length, 2);
+    expect(repo.history.first, initial, reason: 'terbaru di depan');
+    expect(repo.history, contains(older));
+    expect(repo.periodStart, older);
+
+    // tandai lagi tanggal yang sama -> tidak duplikat
+    repo.markPeriodStart(older);
+    expect(repo.history.length, 2);
+
+    // riwayat & flag pengingat bertahan di SharedPreferences
+    repo.setNotificationsEnabled(false);
+    final reloaded = await CycleRepository.load();
+    expect(reloaded.history.length, 2);
+    expect(reloaded.history.first, initial);
+    expect(reloaded.notificationsEnabled, isFalse);
+  });
 }

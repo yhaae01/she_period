@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import 'data/cycle_repository.dart';
 import 'home_shell.dart';
+import 'services/notification_service.dart';
 import 'theme/pink_theme.dart';
 
 void main() async {
@@ -18,6 +19,8 @@ void main() async {
   );
 
   final repository = await CycleRepository.load();
+  // siapkan pengingat (aman jika platform tidak mendukung)
+  await NotificationService.instance.init();
   runApp(MyApp(repository: repository));
 }
 

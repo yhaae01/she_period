@@ -5,7 +5,6 @@ import '../models/cycle_phase.dart';
 import '../models/log_options.dart';
 import '../theme/pink_theme.dart';
 import '../utils/date_format_id.dart';
-import '../utils/hpht_picker.dart';
 import '../widgets/bounce_tap.dart';
 import '../widgets/monthly_calendar.dart';
 
@@ -25,28 +24,6 @@ class _CalendarPageState extends State<CalendarPage> {
 
   bool _sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
-
-  Future<void> _pickHpht() async {
-    final repo = widget.repository;
-    final picked = await pickHphtDate(
-      context,
-      initialDate: repo.periodStart,
-      lastDate: repo.today,
-    );
-    if (picked == null || !mounted) return;
-
-    setState(() {
-      _selected = DateTime(picked.year, picked.month, picked.day);
-    });
-    repo.markPeriodStart(picked);
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('HPHT diperbarui: ${formatFullDate(picked)} 💗'),
-        ),
-      );
-  }
 
   void _markPeriodStart() {
     final repo = widget.repository;
@@ -129,6 +106,8 @@ class _CalendarPageState extends State<CalendarPage> {
                       mood: note?.mood,
                       symptoms: note?.symptoms ?? const <int>[],
                     ),
+                    const SizedBox(height: 16),
+                    _buildHistoryCard(textTheme),
                   ],
                 ),
               ),
@@ -272,30 +251,6 @@ class _CalendarPageState extends State<CalendarPage> {
               textAlign: TextAlign.center,
               style: textTheme.bodySmall?.copyWith(color: PinkPalette.inkSoft),
             ),
-          const SizedBox(height: 10),
-          BounceTap(
-            minScale: 0.95,
-            onTap: _pickHpht,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [PinkPalette.lavender, PinkPalette.blush],
-                ),
-                borderRadius: BorderRadius.circular(kCuteRadius),
-                border: Border.all(color: PinkPalette.lavenderDeep),
-              ),
-              child: Text(
-                'Pilih lewat kalender (HPHT) 📅',
-                style: textTheme.titleSmall?.copyWith(
-                  color: PinkPalette.lavenderInk,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -348,6 +303,109 @@ class _CalendarPageState extends State<CalendarPage> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  // ------------------------------------------------------- riwayat haid
+
+  void _setHpht(DateTime date) {
+    final repo = widget.repository;
+    repo.markPeriodStart(date);
+    setState(() => _selected = date);
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('HPHT dipindah ke ${formatFullDate(date)} 💗'),
+        ),
+      );
+  }
+
+  Widget _buildHistoryCard(TextTheme textTheme) {
+    final repo = widget.repository;
+    final items = repo.history.take(8).toList();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: cuteCardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Riwayat Haid 🩸',
+            style: textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: PinkPalette.ink,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Ketuk salah satu untuk menjadikan HPHT baru 📅',
+            style: textTheme.bodySmall?.copyWith(color: PinkPalette.inkSoft),
+          ),
+          const SizedBox(height: 12),
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0) const SizedBox(height: 8),
+            _historyTile(textTheme, items[i], repo.periodStart),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _historyTile(TextTheme textTheme, DateTime date, DateTime active) {
+    final isActive = _sameDay(date, active);
+
+    return BounceTap(
+      minScale: 0.97,
+      onTap: () => _setHpht(date),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isActive ? PinkPalette.blush : PinkPalette.softBabyPink,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isActive ? PinkPalette.rose : PinkPalette.blush,
+          ),
+        ),
+        child: Row(
+          children: [
+            Text(
+              isActive ? '📍' : '🩸',
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                formatFullDate(date),
+                style: textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: PinkPalette.ink,
+                ),
+              ),
+            ),
+            if (isActive)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: PinkPalette.rose,
+                  borderRadius: BorderRadius.circular(kCuteRadius),
+                ),
+                child: const Text(
+                  'HPHT aktif',
+                  style: TextStyle(
+                    color: PinkPalette.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
