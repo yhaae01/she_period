@@ -1,42 +1,38 @@
 import 'package:flutter/material.dart';
 
+import 'data/cycle_repository.dart';
 import 'models/cycle_phase.dart';
+import 'models/log_options.dart';
 import 'theme/pink_theme.dart';
 import 'widgets/bounce_tap.dart';
-import 'widgets/cute_mascot.dart';
 import 'widgets/cycle_ring.dart';
-
-/// Opsi mood harian (emoji ekspresif).
-const kMoods = <({String emoji, String label})>[
-  (emoji: '😊', label: 'Senang'),
-  (emoji: '🥰', label: 'Sayang'),
-  (emoji: '😐', label: 'Biasa aja'),
-  (emoji: '😢', label: 'Sedih'),
-  (emoji: '😤', label: 'Geram'),
-];
-
-/// Opsi pencatatan gejala harian.
-const kSymptoms = <({String emoji, String label})>[
-  (emoji: '🩸', label: 'Kram'),
-  (emoji: '🤕', label: 'Sakit kepala'),
-  (emoji: '🍽️', label: 'Ngidam'),
-  (emoji: '🥱', label: 'Lelah'),
-  (emoji: '🌧️', label: 'Mood swing'),
-  (emoji: '🌡️', label: 'Meriang'),
-];
+import 'widgets/lottie_mascot.dart';
 
 class DashboardPage extends StatefulWidget {
-  const DashboardPage({super.key});
+  const DashboardPage({super.key, required this.repository});
+
+  final CycleRepository repository;
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  final int _day = 14;
-  final int _cycleLength = 28;
   int? _moodIndex;
   final Set<int> _symptomIndexes = <int>{};
+
+  int get _day => widget.repository.cycleDayOf(widget.repository.today);
+  int get _cycleLength => widget.repository.cycleLength;
+
+  @override
+  void initState() {
+    super.initState();
+    final note = widget.repository.noteOf(widget.repository.today);
+    if (note != null) {
+      _moodIndex = note.mood;
+      _symptomIndexes.addAll(note.symptoms);
+    }
+  }
 
   static const _weekday = [
     'Senin',
@@ -69,7 +65,7 @@ class _DashboardPageState extends State<DashboardPage> {
         '${_month[now.month - 1]} ${now.year}';
   }
 
-  CyclePhase get _phase => CyclePhaseInfo.fromDay(_day, _cycleLength);
+  CyclePhase get _phase => widget.repository.phaseOf(widget.repository.today);
 
   void _toggleSymptom(int index) {
     setState(() {
@@ -81,6 +77,10 @@ class _DashboardPageState extends State<DashboardPage> {
     final mood = _moodIndex == null ? null : kMoods[_moodIndex!];
     final symptoms =
         _symptomIndexes.map((i) => kSymptoms[i].label).join(', ');
+    widget.repository.setNote(
+      widget.repository.today,
+      DayNote(mood: _moodIndex, symptoms: _symptomIndexes.toList()..sort()),
+    );
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(
@@ -95,8 +95,7 @@ class _DashboardPageState extends State<DashboardPage> {
       );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildDashboard(BuildContext context) {
     final phase = _phase;
     final textTheme = Theme.of(context).textTheme;
 
@@ -298,7 +297,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     shape: BoxShape.circle,
                   ),
                 ),
-                CuteMascot(phase: phase, size: 150),
+                LottieMascot(phase: phase, size: 150),
               ],
             ),
           ),
@@ -318,7 +317,7 @@ class _DashboardPageState extends State<DashboardPage> {
   // ------------------------------------------------------------ ring card
 
   Widget _buildRingCard(TextTheme textTheme, CyclePhase phase) {
-    final daysLeft = _cycleLength - _day + 1;
+    final daysLeft = widget.repository.daysUntilNextPeriod;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 18),
@@ -603,6 +602,14 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
         ),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: widget.repository,
+      builder: (context, _) => _buildDashboard(context),
     );
   }
 }

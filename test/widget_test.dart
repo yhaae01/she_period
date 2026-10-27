@@ -1,17 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lottie/lottie.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:she_period/data/cycle_repository.dart';
 import 'package:she_period/main.dart';
+import 'package:she_period/widgets/cute_mascot.dart';
 
 void main() {
-  testWidgets('Dashboard menampilkan sapaan, ring, dan interaksi lucu',
+  testWidgets('Dashboard: sapaan, ring, catatan, lalu pindah ke kalender',
       (WidgetTester tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final repository = await CycleRepository.load();
+
     // ukuran layar seperti ponsel
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(MyApp(repository: repository));
 
     // sapaan harian, maskot, & lingkaran siklus
     expect(find.textContaining('Halo Cantik'), findsOneWidget);
@@ -19,9 +26,12 @@ void main() {
     expect(find.text('dari 28 hari'), findsOneWidget);
     expect(find.textContaining('Siklus 28 hari'), findsOneWidget);
     expect(find.textContaining('Temanmu hari ini'), findsOneWidget);
-
-    // tombol CTA
     expect(find.text('Catat Hari Ini 💗'), findsOneWidget);
+
+    // maskot memakai animasi Lottie (asset berhasil dimuat, bukan fallback)
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(Lottie), findsOneWidget);
+    expect(find.byType(CuteMascot), findsNothing);
 
     // pilih mood
     await tester.ensureVisible(find.text('😢'));
@@ -37,12 +47,28 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.textContaining('Kram 💗'), findsOneWidget);
 
-    // simpan catatan -> muncul snackbar
+    // simpan catatan -> tersimpan di repository + snackbar
     await tester.ensureVisible(find.text('Catat Hari Ini 💗'));
     await tester.pump(const Duration(milliseconds: 250));
     await tester.tap(find.text('Catat Hari Ini 💗'));
     await tester.pump();
     expect(find.textContaining('Tersimpan'), findsOneWidget);
+    expect(repository.noteOf(repository.today)?.mood, 3);
+    expect(repository.noteOf(repository.today)?.symptoms, contains(0));
     await tester.pump(const Duration(seconds: 1));
+
+    // pindah ke tab kalender
+    await tester.tap(find.text('Kalender'));
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.textContaining('Kalender Siklus'), findsOneWidget);
+    expect(find.textContaining('Perkiraan haid berikutnya'), findsOneWidget);
+    expect(find.text('Sen'), findsOneWidget);
+    expect(find.textContaining('Hari ke-'), findsWidgets);
+
+    // kembali ke beranda
+    await tester.tap(find.text('Beranda'));
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.textContaining('Halo Cantik'), findsOneWidget);
   });
 }

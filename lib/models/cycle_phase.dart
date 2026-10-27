@@ -51,11 +51,14 @@ extension CyclePhaseInfo on CyclePhase {
       this == CyclePhase.period || this == CyclePhase.pms;
 
   /// Hari pertama haid diperkirakan `periodLength` hari setelah hari terakhir.
-  static CyclePhase fromDay(int day, int cycleLength) {
-    if (day <= 5) return CyclePhase.period;
+  static CyclePhase fromDay(int day, int cycleLength, {int periodLength = 5}) {
+    if (day <= periodLength) return CyclePhase.period;
 
-    final ovulationStart = cycleLength - 13;
-    final ovulationEnd = cycleLength - 10;
+    final ovulationStart = cycleLength - 13 > periodLength
+        ? cycleLength - 13
+        : periodLength + 1;
+    final ovulationEnd =
+        ovulationStart > cycleLength - 10 ? ovulationStart : cycleLength - 10;
 
     if (day >= ovulationStart && day <= ovulationEnd) {
       return CyclePhase.ovulation;

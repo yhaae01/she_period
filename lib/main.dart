@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'dashboard_page.dart';
+import 'data/cycle_repository.dart';
+import 'home_shell.dart';
 import 'theme/pink_theme.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -14,11 +15,15 @@ void main() {
       systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
-  runApp(const MyApp());
+
+  final repository = await CycleRepository.load();
+  runApp(MyApp(repository: repository));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, required this.repository});
+
+  final CycleRepository repository;
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +31,7 @@ class MyApp extends StatelessWidget {
       title: 'She Period',
       debugShowCheckedModeBanner: false,
       theme: buildPinkTheme(),
-      home: const DashboardPage(),
+      home: HomeShell(repository: repository),
     );
   }
 }
