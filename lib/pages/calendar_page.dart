@@ -4,6 +4,8 @@ import '../data/cycle_repository.dart';
 import '../models/cycle_phase.dart';
 import '../models/log_options.dart';
 import '../theme/pink_theme.dart';
+import '../utils/date_format_id.dart';
+import '../utils/hpht_picker.dart';
 import '../widgets/bounce_tap.dart';
 import '../widgets/monthly_calendar.dart';
 
@@ -17,39 +19,34 @@ class CalendarPage extends StatefulWidget {
 }
 
 class _CalendarPageState extends State<CalendarPage> {
-  static const _weekday = [
-    'Senin',
-    'Selasa',
-    'Rabu',
-    'Kamis',
-    'Jumat',
-    'Sabtu',
-    'Minggu',
-  ];
-
-  static const _month = [
-    'Januari',
-    'Februari',
-    'Maret',
-    'April',
-    'Mei',
-    'Juni',
-    'Juli',
-    'Agustus',
-    'September',
-    'Oktober',
-    'November',
-    'Desember',
-  ];
-
   late DateTime _selected = widget.repository.today;
 
-  String _dateLabel(DateTime date) =>
-      '${_weekday[date.weekday - 1]}, ${date.day} '
-      '${_month[date.month - 1]} ${date.year}';
+  String _dateLabel(DateTime date) => formatFullDate(date);
 
   bool _sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
+
+  Future<void> _pickHpht() async {
+    final repo = widget.repository;
+    final picked = await pickHphtDate(
+      context,
+      initialDate: repo.periodStart,
+      lastDate: repo.today,
+    );
+    if (picked == null || !mounted) return;
+
+    setState(() {
+      _selected = DateTime(picked.year, picked.month, picked.day);
+    });
+    repo.markPeriodStart(picked);
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('HPHT diperbarui: ${formatFullDate(picked)} 💗'),
+        ),
+      );
+  }
 
   void _markPeriodStart() {
     final repo = widget.repository;
@@ -275,6 +272,30 @@ class _CalendarPageState extends State<CalendarPage> {
               textAlign: TextAlign.center,
               style: textTheme.bodySmall?.copyWith(color: PinkPalette.inkSoft),
             ),
+          const SizedBox(height: 10),
+          BounceTap(
+            minScale: 0.95,
+            onTap: _pickHpht,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [PinkPalette.lavender, PinkPalette.blush],
+                ),
+                borderRadius: BorderRadius.circular(kCuteRadius),
+                border: Border.all(color: PinkPalette.lavenderDeep),
+              ),
+              child: Text(
+                'Pilih lewat kalender (HPHT) 📅',
+                style: textTheme.titleSmall?.copyWith(
+                  color: PinkPalette.lavenderInk,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

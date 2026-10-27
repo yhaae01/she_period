@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/cycle_predictions.dart';
 import '../models/cycle_phase.dart';
 
 /// Catatan harian: mood (index dari `kMoods`) & gejala (index `kSymptoms`).
@@ -134,6 +135,14 @@ class CycleRepository extends ChangeNotifier {
     }
     return start;
   }
+
+  /// Semua perhitungan prediksi siklus (selesai haid, ovulasi,
+  /// masa subur, haid berikutnya) dari HPHT yang tersimpan.
+  CyclePredictions get predictions => CyclePredictions(
+        hpht: _periodStart,
+        cycleLength: _cycleLength,
+        periodLength: _periodLength,
+      );
 
   /// Berapa hari lagi haid berikutnya (0 = hari ini).
   int get daysUntilNextPeriod => nextPeriodStart.difference(today).inDays;

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
 
 import 'data/cycle_repository.dart';
@@ -31,6 +32,14 @@ class MyApp extends StatelessWidget {
       title: 'She Period',
       debugShowCheckedModeBanner: false,
       theme: buildPinkTheme(),
+      // tanggal & teks bawaan (date picker) berbahasa Indonesia
+      locale: const Locale('id'),
+      supportedLocales: const [Locale('id')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       home: HomeShell(repository: repository),
     );
   }

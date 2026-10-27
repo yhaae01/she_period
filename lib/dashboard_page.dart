@@ -4,6 +4,8 @@ import 'data/cycle_repository.dart';
 import 'models/cycle_phase.dart';
 import 'models/log_options.dart';
 import 'theme/pink_theme.dart';
+import 'utils/date_format_id.dart';
+import 'utils/hpht_picker.dart';
 import 'widgets/bounce_tap.dart';
 import 'widgets/cycle_ring.dart';
 import 'widgets/lottie_mascot.dart';
@@ -145,6 +147,8 @@ class _DashboardPageState extends State<DashboardPage> {
                   _buildMascotCard(textTheme, phase),
                   const SizedBox(height: 18),
                   _buildRingCard(textTheme, phase),
+                  const SizedBox(height: 18),
+                  _buildPredictionCard(textTheme),
                   const SizedBox(height: 24),
                   _sectionTitle('Sapaan mood hari ini 💭'),
                   const SizedBox(height: 12),
@@ -519,6 +523,160 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------- prediksi siklus
+
+  Future<void> _pickHpht() async {
+    final repo = widget.repository;
+    final picked = await pickHphtDate(
+      context,
+      initialDate: repo.periodStart,
+      lastDate: repo.today,
+    );
+    if (picked == null || !mounted) return;
+
+    repo.markPeriodStart(picked);
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('HPHT diperbarui: ${formatFullDate(picked)} 💗'),
+        ),
+      );
+  }
+
+  Widget _buildPredictionCard(TextTheme textTheme) {
+    final repo = widget.repository;
+    final prediction = repo.predictions;
+    final daysLeft = repo.daysUntilNextPeriod;
+
+    final rows = <({String emoji, String title, String value})>[
+      (
+        emoji: '🩸',
+        title: 'Haid terakhir (HPHT)',
+        value: formatFullDate(prediction.startDate),
+      ),
+      (
+        emoji: '🌡️',
+        title: 'Perkiraan selesai haid',
+        value: '${formatDate(prediction.periodEndDate)} '
+            '(${prediction.periodLength} hari)',
+      ),
+      (
+        emoji: '✨',
+        title: 'Perkiraan hari ovulasi',
+        value: formatFullDate(prediction.ovulationDay),
+      ),
+      (
+        emoji: '🌸',
+        title: 'Perkiraan masa subur',
+        value: formatDateRange(
+          prediction.fertileWindowStart,
+          prediction.fertileWindowEnd,
+        ),
+      ),
+      (
+        emoji: '🌙',
+        title: 'Prediksi haid berikutnya',
+        value: '${formatFullDate(prediction.nextPeriodStart)} '
+            '($daysLeft hari lagi)',
+      ),
+      (
+        emoji: '📅',
+        title: 'Prediksi haid setelahnya',
+        value: formatFullDate(prediction.followingPeriodStart),
+      ),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: cuteCardDecoration(
+        color: PinkPalette.cream,
+        glowColor: PinkPalette.lavenderDeep,
+        glowOpacity: 0.3,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Perkiraan Otomatis ✨',
+            style: textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: PinkPalette.ink,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Dihitung otomatis dari tanggal haid terakhirmu 💗',
+            style: textTheme.bodySmall?.copyWith(color: PinkPalette.inkSoft),
+          ),
+          const SizedBox(height: 12),
+          for (var i = 0; i < rows.length; i++) ...[
+            if (i > 0)
+              Divider(
+                height: 18,
+                color: PinkPalette.blush.withValues(alpha: 0.7),
+              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(rows[i].emoji, style: const TextStyle(fontSize: 18)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        rows[i].title,
+                        style: textTheme.labelSmall?.copyWith(
+                          color: PinkPalette.inkSoft,
+                          letterSpacing: 0.6,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        rows[i].value,
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: PinkPalette.deepRose,
+                          fontWeight: FontWeight.w700,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 16),
+          BounceTap(
+            minScale: 0.95,
+            onTap: _pickHpht,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [PinkPalette.lavender, PinkPalette.blush],
+                ),
+                borderRadius: BorderRadius.circular(kCuteRadius),
+                border: Border.all(color: PinkPalette.lavenderDeep),
+              ),
+              child: Text(
+                'Pilih tanggal haid terakhir 📅',
+                style: textTheme.titleSmall?.copyWith(
+                  color: PinkPalette.lavenderInk,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

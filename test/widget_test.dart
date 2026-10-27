@@ -33,6 +33,15 @@ void main() {
     expect(find.byType(Lottie), findsOneWidget);
     expect(find.byType(CuteMascot), findsNothing);
 
+    // kartu prediksi otomatis tampil
+    expect(find.text('Perkiraan Otomatis ✨'), findsOneWidget);
+    expect(find.textContaining('Haid terakhir (HPHT)'), findsOneWidget);
+    expect(find.textContaining('Perkiraan selesai haid'), findsOneWidget);
+    expect(find.textContaining('Perkiraan hari ovulasi'), findsOneWidget);
+    expect(find.textContaining('Perkiraan masa subur'), findsOneWidget);
+    expect(find.textContaining('Prediksi haid berikutnya'), findsOneWidget);
+    expect(find.textContaining('hari lagi'), findsWidgets);
+
     // pilih mood
     await tester.ensureVisible(find.text('😢'));
     await tester.pump(const Duration(milliseconds: 250));
@@ -56,6 +65,30 @@ void main() {
     expect(repository.noteOf(repository.today)?.mood, 3);
     expect(repository.noteOf(repository.today)?.symptoms, contains(0));
     await tester.pump(const Duration(seconds: 1));
+
+    // buka date picker HPHT & pilih tanggal 1 di bulan yang tampil
+    await tester.ensureVisible(find.text('Pilih tanggal haid terakhir 📅'));
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.tap(find.text('Pilih tanggal haid terakhir 📅'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 450));
+    expect(find.byType(DatePickerDialog), findsOneWidget);
+
+    final dialog = find.byType(DatePickerDialog);
+    await tester.tap(
+      find.descendant(of: dialog, matching: find.text('1')),
+    );
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.tap(
+      find.descendant(of: dialog, matching: find.text('Oke')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    // HPHT tersimpan permanen & prediksi ikut berubah
+    expect(repository.periodStart.day, 1);
+    expect(find.textContaining('HPHT diperbarui'), findsOneWidget);
+    expect(find.textContaining('Perkiraan Otomatis'), findsOneWidget);
 
     // pindah ke tab kalender
     await tester.tap(find.text('Kalender'));
