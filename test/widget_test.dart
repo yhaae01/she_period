@@ -221,6 +221,19 @@ void main() {
     expect(repository.noteOf(selectedDate)?.quickEmoji, '🥱');
     expect(find.text('Sedikit lelah hari ini'), findsWidgets);
 
+    // tanggal masa depan tidak membuka editor dan memberi penjelasan
+    final futureDate = repository.today.add(const Duration(days: 2));
+    final futureDayCell = find.text('${futureDate.day}').first;
+    await tester.ensureVisible(futureDayCell);
+    await tester.tap(futureDayCell);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Tulis catatan harian'), findsOneWidget);
+    expect(
+      tester.widget<OutlinedButton>(find.byType(OutlinedButton)).onPressed,
+      isNull,
+    );
+    expect(find.textContaining('Catatan harian bisa ditulis'), findsOneWidget);
+
     // tab Atur: kustomisasi panjang siklus & lama haid
     await tester.tap(find.text('Atur'));
     await tester.pump(const Duration(milliseconds: 350));

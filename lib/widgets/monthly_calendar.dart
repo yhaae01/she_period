@@ -200,8 +200,9 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
                   ]
                 : null,
           ),
-          child: Stack(
-            alignment: Alignment.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
                 date.day.toString(),
@@ -211,39 +212,18 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
                   color: textColor,
                 ),
               ),
-              if (hasNote)
-                Positioned(
-                  top: 2,
-                  right: 2,
-                  child: Container(
-                    width: 11,
-                    height: 11,
-                    decoration: BoxDecoration(
-                      color: PinkPalette.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: PinkPalette.deepRose,
-                        width: 1.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: PinkPalette.deepRose.withValues(alpha: 0.35),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                    alignment: Alignment.center,
-                    child: Container(
-                      width: 5,
-                      height: 5,
-                      decoration: const BoxDecoration(
-                        color: PinkPalette.deepRose,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
+              if (hasNote) ...[
+                const SizedBox(height: 2),
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: PinkPalette.deepRose,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: PinkPalette.white, width: 0.8),
                   ),
                 ),
+              ],
             ],
           ),
         ),

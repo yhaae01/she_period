@@ -177,7 +177,8 @@ class _CalendarPageState extends State<CalendarPage> {
     required DayNote? note,
   }) {
     final repo = widget.repository;
-    final canMark = !_selected.isAfter(repo.today);
+    final isFutureDate = _selected.isAfter(repo.today);
+    final canMark = !isFutureDate;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -229,17 +230,26 @@ class _CalendarPageState extends State<CalendarPage> {
             ),
           const SizedBox(height: 10),
           OutlinedButton.icon(
-            onPressed: () => _showNoteDialog(_selected),
+            onPressed: isFutureDate ? null : () => _showNoteDialog(_selected),
             icon: const Icon(Icons.edit_note_rounded),
             label: Text(note == null ? 'Tulis catatan harian' : 'Edit catatan'),
             style: OutlinedButton.styleFrom(
               foregroundColor: PinkPalette.deepRose,
+              disabledForegroundColor: PinkPalette.inkSoft,
               side: const BorderSide(color: PinkPalette.blush),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(kCuteRadius),
               ),
             ),
           ),
+          if (isFutureDate) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Catatan harian bisa ditulis mulai tanggal ini ya 💗',
+              textAlign: TextAlign.center,
+              style: textTheme.bodySmall?.copyWith(color: PinkPalette.inkSoft),
+            ),
+          ],
           const SizedBox(height: 16),
           if (canMark)
             BounceTap(
