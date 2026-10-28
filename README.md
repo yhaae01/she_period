@@ -1,17 +1,36 @@
-# she_period
+# ShePeriod 💗
 
-A new Flutter project.
+ShePeriod adalah aplikasi Flutter untuk membantu pengguna mencatat siklus menstruasi, melihat prediksi fase, dan membuat catatan harian dengan antarmuka pink yang lembut.
 
-## Getting Started
+## Fitur
 
-This project is a starting point for a Flutter application.
+- **Dashboard siklus:** menampilkan fase siklus, hitung mundur haid, prediksi ovulasi dan masa subur, serta tips harian.
+- **Maskot kelinci interaktif:** ketuk kelinci untuk melihat animasi bounce dan pesan penyemangat yang berubah.
+- **Kalender bulanan:** pilih tanggal untuk melihat fase siklus dan membuat atau mengedit catatan.
+- **Catatan harian:** simpan teks bebas dan mood cepat (😊, 🥱, 🍫, ⚡); catatan ditandai di kalender dan ditampilkan pada detail tanggal.
+- **Pencatatan mood dan gejala:** pilih mood serta gejala yang dirasakan dari Dashboard.
+- **Riwayat dan pengaturan siklus:** kelola HPHT, panjang siklus, lama haid, dan pengingat.
+- **Penyimpanan lokal:** data siklus dan catatan disimpan di perangkat menggunakan `shared_preferences`.
 
-A few resources to get you started if this is your first Flutter project:
+## Menjalankan aplikasi
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+Pastikan Flutter SDK tersedia, lalu jalankan perintah berikut dari root proyek:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+flutter pub get
+flutter run
+```
+
+## Menjalankan pemeriksaan
+
+```bash
+flutter analyze
+flutter test
+```
+
+## Teknologi utama
+
+- Flutter dan Dart
+- `shared_preferences` untuk penyimpanan lokal
+- `lottie` untuk animasi maskot
+- `flutter_local_notifications` untuk pengingat
