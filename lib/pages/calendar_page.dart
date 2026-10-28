@@ -25,6 +25,13 @@ class _CalendarPageState extends State<CalendarPage> {
   bool _sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
+  Future<void> _showNoteDialog(DateTime date) => showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => _DayNoteSheet(repository: widget.repository, date: date),
+  );
+
   void _markPeriodStart() {
     final repo = widget.repository;
     repo.markPeriodStart(_selected);
@@ -102,9 +109,7 @@ class _CalendarPageState extends State<CalendarPage> {
                       textTheme,
                       phase: phase,
                       cycleDay: cycleDay,
-                      hasNote: note != null,
-                      mood: note?.mood,
-                      symptoms: note?.symptoms ?? const <int>[],
+                      note: note,
                     ),
                     const SizedBox(height: 16),
                     _buildHistoryCard(textTheme),
@@ -169,9 +174,7 @@ class _CalendarPageState extends State<CalendarPage> {
     TextTheme textTheme, {
     required CyclePhase phase,
     required int cycleDay,
-    required bool hasNote,
-    required int? mood,
-    required List<int> symptoms,
+    required DayNote? note,
   }) {
     final repo = widget.repository;
     final canMark = !_selected.isAfter(repo.today);
@@ -207,7 +210,9 @@ class _CalendarPageState extends State<CalendarPage> {
             ),
           ),
           const SizedBox(height: 16),
-          if (hasNote) _buildNote(textTheme, mood, symptoms) else
+          if (note != null)
+            _buildNote(textTheme, note)
+          else
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -222,6 +227,19 @@ class _CalendarPageState extends State<CalendarPage> {
                 ),
               ),
             ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: () => _showNoteDialog(_selected),
+            icon: const Icon(Icons.edit_note_rounded),
+            label: Text(note == null ? 'Tulis catatan harian' : 'Edit catatan'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: PinkPalette.deepRose,
+              side: const BorderSide(color: PinkPalette.blush),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(kCuteRadius),
+              ),
+            ),
+          ),
           const SizedBox(height: 16),
           if (canMark)
             BounceTap(
@@ -256,7 +274,9 @@ class _CalendarPageState extends State<CalendarPage> {
     );
   }
 
-  Widget _buildNote(TextTheme textTheme, int? mood, List<int> symptoms) {
+  Widget _buildNote(TextTheme textTheme, DayNote note) {
+    final mood = note.mood;
+    final symptoms = note.symptoms;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -266,6 +286,14 @@ class _CalendarPageState extends State<CalendarPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (note.quickEmoji != null)
+            Text(
+              'Mood cepat: ${note.quickEmoji}',
+              style: textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: PinkPalette.deepRose,
+              ),
+            ),
           if (mood != null)
             Text(
               'Mood: ${kMoods[mood].emoji} ${kMoods[mood].label}',
@@ -274,6 +302,17 @@ class _CalendarPageState extends State<CalendarPage> {
                 color: PinkPalette.ink,
               ),
             ),
+          if (note.text.isNotEmpty) ...[
+            if (note.quickEmoji != null || mood != null)
+              const SizedBox(height: 8),
+            Text(
+              note.text,
+              style: textTheme.bodyMedium?.copyWith(
+                color: PinkPalette.ink,
+                height: 1.4,
+              ),
+            ),
+          ],
           if (symptoms.isNotEmpty) ...[
             const SizedBox(height: 8),
             Wrap(
@@ -316,9 +355,7 @@ class _CalendarPageState extends State<CalendarPage> {
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(
-        SnackBar(
-          content: Text('HPHT dipindah ke ${formatFullDate(date)} 💗'),
-        ),
+        SnackBar(content: Text('HPHT dipindah ke ${formatFullDate(date)} 💗')),
       );
   }
 
@@ -371,10 +408,7 @@ class _CalendarPageState extends State<CalendarPage> {
         ),
         child: Row(
           children: [
-            Text(
-              isActive ? '📍' : '🩸',
-              style: const TextStyle(fontSize: 16),
-            ),
+            Text(isActive ? '📍' : '🩸', style: const TextStyle(fontSize: 16)),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -423,6 +457,151 @@ class _CalendarPageState extends State<CalendarPage> {
         style: textTheme.labelMedium?.copyWith(
           color: PinkPalette.deepRose,
           fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _DayNoteSheet extends StatefulWidget {
+  const _DayNoteSheet({required this.repository, required this.date});
+
+  final CycleRepository repository;
+  final DateTime date;
+
+  @override
+  State<_DayNoteSheet> createState() => _DayNoteSheetState();
+}
+
+class _DayNoteSheetState extends State<_DayNoteSheet> {
+  static const _quickEmojis = ['😊', '🥱', '🍫', '⚡'];
+
+  late final DayNote? _existing = widget.repository.noteOf(widget.date);
+  late final TextEditingController _controller = TextEditingController(
+    text: _existing?.text ?? '',
+  );
+  late String? _selectedEmoji = _existing?.quickEmoji;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.82,
+        ),
+        padding: const EdgeInsets.fromLTRB(22, 12, 22, 24),
+        decoration: const BoxDecoration(
+          color: PinkPalette.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: PinkPalette.blush,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'Catatan ${formatFullDate(widget.date)} 📝',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: PinkPalette.ink,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _controller,
+                  maxLines: 4,
+                  minLines: 3,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(
+                    hintText: 'Ceritakan harimu... 💗',
+                    filled: true,
+                    fillColor: PinkPalette.softBabyPink,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(kCuteRadius),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Pilih mood cepat',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: PinkPalette.inkSoft,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 10,
+                  children: [
+                    for (final emoji in _quickEmojis)
+                      ChoiceChip(
+                        label: Text(
+                          emoji,
+                          style: const TextStyle(fontSize: 20),
+                        ),
+                        selected: _selectedEmoji == emoji,
+                        selectedColor: PinkPalette.blush,
+                        backgroundColor: PinkPalette.softBabyPink,
+                        onSelected: (_) => setState(() {
+                          _selectedEmoji = _selectedEmoji == emoji
+                              ? null
+                              : emoji;
+                        }),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: PinkPalette.dustyRose,
+                    foregroundColor: PinkPalette.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(kCuteRadius),
+                    ),
+                  ),
+                  onPressed: () {
+                    widget.repository.setNote(
+                      widget.date,
+                      DayNote(
+                        mood: _existing?.mood,
+                        symptoms: _existing?.symptoms ?? const <int>[],
+                        text: _controller.text.trim(),
+                        quickEmoji: _selectedEmoji,
+                      ),
+                    );
+                    Navigator.pop(context);
+                  },
+                  child: const Text(
+                    'Simpan 💗',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

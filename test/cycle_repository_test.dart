@@ -9,23 +9,24 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  test('siklus default: hari ke-14, fase folikuler, prediksi 28 hari',
-      () async {
-    final repo = await CycleRepository.load();
-    final today = repo.today;
+  test(
+    'siklus default: hari ke-14, fase folikuler, prediksi 28 hari',
+    () async {
+      final repo = await CycleRepository.load();
+      final today = repo.today;
 
-    expect(repo.cycleLength, 28);
-    expect(repo.periodLength, 5);
-    expect(repo.periodStart, today.subtract(const Duration(days: 13)));
-    expect(repo.cycleDayOf(today), 14);
-    expect(repo.phaseOf(today), CyclePhase.follicular);
-    expect(repo.daysUntilNextPeriod, 15);
-    expect(repo.isPredictedPeriodDay(today), isFalse);
-    // tanggal masa depan tetap bisa diprediksi
-    expect(repo.cycleDayOf(today.add(const Duration(days: 8))), 22);
-    expect(repo.phaseOf(today.add(const Duration(days: 8))),
-        CyclePhase.pms);
-  });
+      expect(repo.cycleLength, 28);
+      expect(repo.periodLength, 5);
+      expect(repo.periodStart, today.subtract(const Duration(days: 13)));
+      expect(repo.cycleDayOf(today), 14);
+      expect(repo.phaseOf(today), CyclePhase.follicular);
+      expect(repo.daysUntilNextPeriod, 15);
+      expect(repo.isPredictedPeriodDay(today), isFalse);
+      // tanggal masa depan tetap bisa diprediksi
+      expect(repo.cycleDayOf(today.add(const Duration(days: 8))), 22);
+      expect(repo.phaseOf(today.add(const Duration(days: 8))), CyclePhase.pms);
+    },
+  );
 
   test('catatan harian tersimpan dan terbaca lagi', () async {
     final repo = await CycleRepository.load();
@@ -33,7 +34,21 @@ void main() {
 
     expect(repo.noteOf(today), isNull);
 
-    repo.setNote(today, const DayNote(mood: 3, symptoms: [0, 2]));
+    repo.setNote(
+      today,
+      const DayNote(
+        mood: 3,
+        symptoms: [0, 2],
+        text: 'Kram ringan, minum air hangat',
+        quickEmoji: '😊',
+      ),
+    );
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(
+      prefs.getString('note_${CycleRepository.dateKey(today)}'),
+      isNotNull,
+    );
 
     // baca ulang dari penyimpanan yang sama
     final reloaded = await CycleRepository.load();
@@ -41,10 +56,13 @@ void main() {
     expect(note, isNotNull);
     expect(note!.mood, 3);
     expect(note.symptoms, [0, 2]);
+    expect(note.text, 'Kram ringan, minum air hangat');
+    expect(note.quickEmoji, '😊');
 
     // catatan kosong dihapus
     reloaded.setNote(today, const DayNote());
     expect(reloaded.noteOf(today), isNull);
+    expect(prefs.getString('note_${CycleRepository.dateKey(today)}'), isNull);
   });
 
   test('menandai hari pertama haid menggeser prediksi', () async {
@@ -70,8 +88,10 @@ void main() {
 
     expect(repo.cycleDayOf(repo.today), 3);
     expect(repo.phaseOf(repo.today), CyclePhase.period);
-    expect(repo.phaseOf(repo.today.add(const Duration(days: 4))),
-        CyclePhase.follicular);
+    expect(
+      repo.phaseOf(repo.today.add(const Duration(days: 4))),
+      CyclePhase.follicular,
+    );
   });
 
   test('pengaturan siklus custom: tersimpan & batas terkunci', () async {

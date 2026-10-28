@@ -20,7 +20,9 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   int? _moodIndex;
+  String? _quickEmoji;
   final Set<int> _symptomIndexes = <int>{};
+  final TextEditingController _noteController = TextEditingController();
 
   int get _day => widget.repository.cycleDayOf(widget.repository.today);
   int get _cycleLength => widget.repository.cycleLength;
@@ -31,8 +33,16 @@ class _DashboardPageState extends State<DashboardPage> {
     final note = widget.repository.noteOf(widget.repository.today);
     if (note != null) {
       _moodIndex = note.mood;
+      _quickEmoji = note.quickEmoji;
       _symptomIndexes.addAll(note.symptoms);
+      _noteController.text = note.text;
     }
+  }
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
   }
 
   static const _weekday = [
@@ -76,21 +86,28 @@ class _DashboardPageState extends State<DashboardPage> {
 
   void _saveToday() {
     final mood = _moodIndex == null ? null : kMoods[_moodIndex!];
-    final symptoms =
-        _symptomIndexes.map((i) => kSymptoms[i].label).join(', ');
+    final symptoms = _symptomIndexes.map((i) => kSymptoms[i].label).join(', ');
     widget.repository.setNote(
       widget.repository.today,
-      DayNote(mood: _moodIndex, symptoms: _symptomIndexes.toList()..sort()),
+      DayNote(
+        mood: _moodIndex,
+        symptoms: _symptomIndexes.toList()..sort(),
+        text: _noteController.text.trim(),
+        quickEmoji: _quickEmoji,
+      ),
     );
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(
         SnackBar(
           content: Text(
-            mood == null && symptoms.isEmpty
+            mood == null &&
+                    symptoms.isEmpty &&
+                    _noteController.text.trim().isEmpty &&
+                    _quickEmoji == null
                 ? 'Belum ada catatan nih, isi dulu ya 💗'
-                : 'Tersimpan! ${mood?.emoji ?? '💗'}'
-                    '${symptoms.isEmpty ? '' : ' • $symptoms'} 💗',
+                : 'Tersimpan! ${mood?.emoji ?? _quickEmoji ?? '💗'}'
+                      '${symptoms.isEmpty ? '' : ' • $symptoms'} 💗',
           ),
         ),
       );
@@ -156,6 +173,10 @@ class _DashboardPageState extends State<DashboardPage> {
                   _sectionTitle('Lagi ngerasain apa? 🩰'),
                   const SizedBox(height: 12),
                   _buildSymptomPicker(textTheme),
+                  const SizedBox(height: 18),
+                  _buildFreeNoteField(textTheme),
+                  const SizedBox(height: 18),
+                  _buildQuickEmojiPicker(textTheme),
                   const SizedBox(height: 18),
                   _buildHydrationTip(textTheme, phase),
                   const SizedBox(height: 20),
@@ -438,8 +459,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       boxShadow: _moodIndex == i
                           ? [
                               BoxShadow(
-                                color: PinkPalette.rose
-                                    .withValues(alpha: 0.45),
+                                color: PinkPalette.rose.withValues(alpha: 0.45),
                                 blurRadius: 14,
                                 offset: const Offset(0, 6),
                               ),
@@ -450,9 +470,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       kMoods[i].emoji,
                       style: TextStyle(
                         fontSize: 24,
-                        color: _moodIndex == i
-                            ? PinkPalette.white
-                            : null,
+                        color: _moodIndex == i ? PinkPalette.white : null,
                       ),
                     ),
                   ),
@@ -466,7 +484,7 @@ class _DashboardPageState extends State<DashboardPage> {
               _moodIndex == null
                   ? 'Pilih mood kamu dulu ya 💕'
                   : 'Mood hari ini: ${kMoods[_moodIndex!].label} '
-                      '${kMoods[_moodIndex!].emoji}',
+                        '${kMoods[_moodIndex!].emoji}',
               key: ValueKey<int?>(_moodIndex),
               textAlign: TextAlign.center,
               style: textTheme.bodyMedium?.copyWith(
@@ -497,8 +515,10 @@ class _DashboardPageState extends State<DashboardPage> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOutBack,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: _symptomIndexes.contains(i)
                       ? PinkPalette.blush
@@ -512,7 +532,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
                 child: Text(
                   '${kSymptoms[i].emoji} ${kSymptoms[i].label}'
-                      '${_symptomIndexes.contains(i) ? ' 💗' : ''}',
+                  '${_symptomIndexes.contains(i) ? ' 💗' : ''}',
                   style: textTheme.labelLarge?.copyWith(
                     color: _symptomIndexes.contains(i)
                         ? PinkPalette.deepRose
@@ -522,6 +542,66 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFreeNoteField(TextTheme textTheme) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: cuteCardDecoration(),
+      child: TextField(
+        controller: _noteController,
+        minLines: 2,
+        maxLines: 4,
+        textCapitalization: TextCapitalization.sentences,
+        decoration: InputDecoration(
+          labelText: 'Catatan harian',
+          hintText: 'Contoh: Kram ringan, minum air hangat 💗',
+          prefixIcon: const Icon(Icons.edit_note_rounded),
+          filled: true,
+          fillColor: PinkPalette.softBabyPink,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(kCuteRadius),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickEmojiPicker(TextTheme textTheme) {
+    const emojis = ['😊', '🥱', '🍫', '⚡'];
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: cuteCardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Mood cepat',
+            style: textTheme.titleSmall?.copyWith(
+              color: PinkPalette.ink,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 10,
+            children: [
+              for (final emoji in emojis)
+                ChoiceChip(
+                  label: Text(emoji, style: const TextStyle(fontSize: 20)),
+                  selected: _quickEmoji == emoji,
+                  selectedColor: PinkPalette.blush,
+                  backgroundColor: PinkPalette.softBabyPink,
+                  onSelected: (_) => setState(() {
+                    _quickEmoji = _quickEmoji == emoji ? null : emoji;
+                  }),
+                ),
+            ],
+          ),
         ],
       ),
     );
@@ -543,7 +623,8 @@ class _DashboardPageState extends State<DashboardPage> {
       (
         emoji: '🌡️',
         title: 'Perkiraan selesai haid',
-        value: '${formatDate(prediction.periodEndDate)} '
+        value:
+            '${formatDate(prediction.periodEndDate)} '
             '(${prediction.periodLength} hari)',
       ),
       (
@@ -562,7 +643,8 @@ class _DashboardPageState extends State<DashboardPage> {
       (
         emoji: '🌙',
         title: 'Prediksi haid berikutnya',
-        value: '${formatFullDate(prediction.nextPeriodStart)} '
+        value:
+            '${formatFullDate(prediction.nextPeriodStart)} '
             '($daysLeft hari lagi)',
       ),
       (

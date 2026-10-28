@@ -12,8 +12,9 @@ import 'package:she_period/utils/date_format_id.dart';
 import 'package:she_period/widgets/cute_mascot.dart';
 
 void main() {
-  testWidgets('Pertama kali dibuka: splash -> onboarding -> dashboard',
-      (WidgetTester tester) async {
+  testWidgets('Pertama kali dibuka: splash -> onboarding -> dashboard', (
+    WidgetTester tester,
+  ) async {
     SharedPreferences.setMockInitialValues({});
     final repository = await CycleRepository.load();
 
@@ -94,8 +95,9 @@ void main() {
     expect(again.onboardingDone, isTrue);
   });
 
-  testWidgets('Dashboard: sapaan, ring, catatan, lalu pindah ke kalender',
-      (WidgetTester tester) async {
+  testWidgets('Dashboard: sapaan, ring, catatan, lalu pindah ke kalender', (
+    WidgetTester tester,
+  ) async {
     SharedPreferences.setMockInitialValues({'onboarding_done': true});
     final repository = await CycleRepository.load();
 
@@ -140,7 +142,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.textContaining('Mood hari ini: Sedih'), findsOneWidget);
 
-    // pilih gejala kram
+    // tambahkan catatan bebas dan pilih gejala kram
+    await tester.ensureVisible(find.byType(TextField).last);
+    await tester.enterText(
+      find.byType(TextField).last,
+      'Kram ringan, minum air hangat',
+    );
     await tester.ensureVisible(find.text('🩸 Kram'));
     await tester.pump(const Duration(milliseconds: 250));
     await tester.tap(find.text('🩸 Kram'));
@@ -155,6 +162,10 @@ void main() {
     expect(find.textContaining('Tersimpan'), findsOneWidget);
     expect(repository.noteOf(repository.today)?.mood, 3);
     expect(repository.noteOf(repository.today)?.symptoms, contains(0));
+    expect(
+      repository.noteOf(repository.today)?.text,
+      'Kram ringan, minum air hangat',
+    );
     await tester.pump(const Duration(seconds: 1));
 
     // pindah ke tab kalender
@@ -167,6 +178,33 @@ void main() {
     expect(find.textContaining('Hari ke-'), findsWidgets);
     expect(find.textContaining('Riwayat Haid'), findsOneWidget);
     expect(find.textContaining('HPHT aktif'), findsOneWidget);
+    expect(find.text('Kram ringan, minum air hangat'), findsOneWidget);
+
+    // pilih tanggal kalender dan simpan catatan bebas beserta emoji cepat
+    final selectedDate = repository.today.subtract(const Duration(days: 1));
+    final selectedDayCell = find.text('${selectedDate.day}').first;
+    await tester.ensureVisible(selectedDayCell);
+    await tester.tap(selectedDayCell);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.textContaining('Catatan '), findsNothing);
+    await tester.ensureVisible(find.text('Tulis catatan harian'));
+    await tester.tap(find.text('Tulis catatan harian'));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.textContaining('Catatan '), findsOneWidget);
+    await tester.enterText(
+      find.byType(TextField).last,
+      'Sedikit lelah hari ini',
+    );
+    await tester.ensureVisible(find.text('🥱'));
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.tap(find.text('🥱'));
+    await tester.ensureVisible(find.text('Simpan 💗'));
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.tap(find.text('Simpan 💗'));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(repository.noteOf(selectedDate)?.text, 'Sedikit lelah hari ini');
+    expect(repository.noteOf(selectedDate)?.quickEmoji, '🥱');
+    expect(find.text('Sedikit lelah hari ini'), findsWidgets);
 
     // tab Atur: kustomisasi panjang siklus & lama haid
     await tester.tap(find.text('Atur'));

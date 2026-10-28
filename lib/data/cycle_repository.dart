@@ -8,23 +8,38 @@ import '../models/cycle_phase.dart';
 
 /// Catatan harian: mood (index dari `kMoods`) & gejala (index `kSymptoms`).
 class DayNote {
-  const DayNote({this.mood, this.symptoms = const <int>[]});
+  const DayNote({
+    this.mood,
+    this.symptoms = const <int>[],
+    this.text = '',
+    this.quickEmoji,
+  });
 
   final int? mood;
   final List<int> symptoms;
+  final String text;
+  final String? quickEmoji;
 
-  bool get isEmpty => mood == null && symptoms.isEmpty;
+  bool get isEmpty =>
+      mood == null &&
+      symptoms.isEmpty &&
+      text.trim().isEmpty &&
+      quickEmoji == null;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'mood': mood,
-        'symptoms': symptoms,
-      };
+    'mood': mood,
+    'symptoms': symptoms,
+    'text': text,
+    'quickEmoji': quickEmoji,
+  };
 
   factory DayNote.fromJson(Map<String, dynamic> json) => DayNote(
-        mood: json['mood'] as int?,
-        symptoms:
-            (json['symptoms'] as List<dynamic>?)?.cast<int>() ?? const <int>[],
-      );
+    mood: json['mood'] as int?,
+    symptoms:
+        (json['symptoms'] as List<dynamic>?)?.cast<int>() ?? const <int>[],
+    text: json['text'] as String? ?? '',
+    quickEmoji: json['quickEmoji'] as String?,
+  );
 }
 
 /// Penyimpanan data siklus & catatan harian via `shared_preferences`.
@@ -33,13 +48,13 @@ class DayNote {
 /// kalender) ikut menyegarkan diri.
 class CycleRepository extends ChangeNotifier {
   CycleRepository._(this._prefs)
-      : _periodStart = DateTime.now().subtract(const Duration(days: 13)),
-        _cycleLength = 28,
-        _periodLength = 5,
-        _notificationsEnabled = true,
-        _onboardingDone = false,
-        _userName = '',
-        _notes = <String, DayNote>{} {
+    : _periodStart = DateTime.now().subtract(const Duration(days: 13)),
+      _cycleLength = 28,
+      _periodLength = 5,
+      _notificationsEnabled = true,
+      _onboardingDone = false,
+      _userName = '',
+      _notes = <String, DayNote>{} {
     _read();
   }
 
@@ -104,12 +119,29 @@ class CycleRepository extends ChangeNotifier {
       try {
         final decoded = jsonDecode(raw) as Map<String, dynamic>;
         for (final entry in decoded.entries) {
-          _notes[entry.key] =
-              DayNote.fromJson(entry.value as Map<String, dynamic>);
+          _notes[entry.key] = DayNote.fromJson(
+            entry.value as Map<String, dynamic>,
+          );
         }
       } on FormatException {
         // data rusak -> mulai bersih, jangan crash
         _notes.clear();
+      }
+    }
+    // Catatan baru disimpan terpisah per tanggal. Baca juga format agregat lama
+    // agar data pengguna dari versi sebelumnya tetap tersedia.
+    for (final key in _prefs.getKeys().where(
+      (key) => key.startsWith('note_'),
+    )) {
+      final date = key.substring('note_'.length);
+      final noteJson = _prefs.getString(key);
+      if (noteJson == null) continue;
+      try {
+        _notes[date] = DayNote.fromJson(
+          jsonDecode(noteJson) as Map<String, dynamic>,
+        );
+      } on FormatException {
+        // Abaikan satu catatan rusak tanpa mengganggu catatan lain.
       }
     }
 
@@ -126,8 +158,9 @@ class CycleRepository extends ChangeNotifier {
     if (rawHistory != null && rawHistory.isNotEmpty) {
       try {
         final decoded = jsonDecode(rawHistory) as List<dynamic>;
-        _history.addAll(decoded
-            .map((e) => _onlyDate(DateTime.parse(e as String))));
+        _history.addAll(
+          decoded.map((e) => _onlyDate(DateTime.parse(e as String))),
+        );
       } on FormatException {
         _history.clear();
       }
@@ -146,8 +179,10 @@ class CycleRepository extends ChangeNotifier {
   /// Semua nilai ditulis sinkron ke cache [SharedPreferences]
   /// supaya pembacaan ulang langsung konsisten.
   void _persist() {
-    _prefs.setString(_kNotes,
-        jsonEncode(_notes.map((key, value) => MapEntry(key, value.toJson()))));
+    _prefs.setString(
+      _kNotes,
+      jsonEncode(_notes.map((key, value) => MapEntry(key, value.toJson()))),
+    );
     _prefs.setString(_kPeriodStart, _periodStart.toIso8601String());
     _prefs.setInt(_kCycleLength, _cycleLength);
     _prefs.setInt(_kPeriodLength, _periodLength);
@@ -227,6 +262,7 @@ class CycleRepository extends ChangeNotifier {
     _persist();
     notifyListeners();
   }
+
   DateTime get today => _onlyDate(DateTime.now());
 
   /// Hari ke berapa siklus untuk tanggal [date] (1 = hari pertama haid).
@@ -238,10 +274,10 @@ class CycleRepository extends ChangeNotifier {
 
   /// Fase siklus untuk tanggal [date].
   CyclePhase phaseOf(DateTime date) => CyclePhaseInfo.fromDay(
-        cycleDayOf(date),
-        _cycleLength,
-        periodLength: _periodLength,
-      );
+    cycleDayOf(date),
+    _cycleLength,
+    periodLength: _periodLength,
+  );
 
   /// Perkiraan hari haid untuk tanggal [date].
   bool isPredictedPeriodDay(DateTime date) => cycleDayOf(date) <= _periodLength;
@@ -259,10 +295,10 @@ class CycleRepository extends ChangeNotifier {
   /// Semua perhitungan prediksi siklus (selesai haid, ovulasi,
   /// masa subur, haid berikutnya) dari HPHT yang tersimpan.
   CyclePredictions get predictions => CyclePredictions(
-        hpht: _periodStart,
-        cycleLength: _cycleLength,
-        periodLength: _periodLength,
-      );
+    hpht: _periodStart,
+    cycleLength: _cycleLength,
+    periodLength: _periodLength,
+  );
 
   /// Berapa hari lagi haid berikutnya (0 = hari ini).
   int get daysUntilNextPeriod => nextPeriodStart.difference(today).inDays;
@@ -272,10 +308,13 @@ class CycleRepository extends ChangeNotifier {
   DayNote? noteOf(DateTime date) => _notes[dateKey(date)];
 
   void setNote(DateTime date, DayNote note) {
+    final key = dateKey(date);
     if (note.isEmpty) {
-      _notes.remove(dateKey(date));
+      _notes.remove(key);
+      _prefs.remove('note_$key');
     } else {
-      _notes[dateKey(date)] = note;
+      _notes[key] = note;
+      _prefs.setString('note_$key', jsonEncode(note.toJson()));
     }
     _persist();
     notifyListeners();

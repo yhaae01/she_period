@@ -41,7 +41,15 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
     'Desember',
   ];
 
-  static const _weekdayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+  static const _weekdayNames = [
+    'Sen',
+    'Sel',
+    'Rab',
+    'Kam',
+    'Jum',
+    'Sab',
+    'Min',
+  ];
 
   static bool _sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
@@ -120,6 +128,7 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
               _LegendDot(color: PinkPalette.dustyRose, label: 'Haid'),
               _LegendDot(color: PinkPalette.blush, label: 'Prediksi haid'),
               _LegendDot(color: PinkPalette.lavender, label: 'Masa subur'),
+              _LegendDot(color: PinkPalette.deepRose, label: 'Ada catatan'),
             ],
           ),
         ],
@@ -175,7 +184,7 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
         onTap: () => widget.onSelected(date),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutBack,
+          curve: Curves.easeOutCubic,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: bg ?? PinkPalette.cream,
@@ -203,13 +212,32 @@ class _MonthlyCalendarState extends State<MonthlyCalendar> {
                 ),
               ),
               if (hasNote)
-                const Positioned(
-                  bottom: 5,
-                  child: SizedBox(
-                    width: 5,
-                    height: 5,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
+                Positioned(
+                  top: 2,
+                  right: 2,
+                  child: Container(
+                    width: 11,
+                    height: 11,
+                    decoration: BoxDecoration(
+                      color: PinkPalette.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: PinkPalette.deepRose,
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: PinkPalette.deepRose.withValues(alpha: 0.35),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: 5,
+                      height: 5,
+                      decoration: const BoxDecoration(
                         color: PinkPalette.deepRose,
                         shape: BoxShape.circle,
                       ),
