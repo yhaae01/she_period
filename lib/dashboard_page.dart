@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import 'data/cycle_repository.dart';
@@ -23,6 +26,18 @@ class _DashboardPageState extends State<DashboardPage> {
   String? _quickEmoji;
   final Set<int> _symptomIndexes = <int>{};
   final TextEditingController _noteController = TextEditingController();
+  final math.Random _random = math.Random();
+  Timer? _mascotBounceTimer;
+  int? _mascotMessageIndex;
+  bool _mascotIsBouncing = false;
+
+  static const _mascotMessages = [
+    'Semangat ya hari ini! 💕',
+    'Jangan lupa minum air hangat ya, Putri! 🍵',
+    'Lagi PMS ya? Istirahat yang cukup ya, cantik ✨',
+    'Peluk jauh untuk Putri! 🤗',
+    'Kamu hebat sudah melewati hari ini 🐰💗',
+  ];
 
   int get _day => widget.repository.cycleDayOf(widget.repository.today);
   int get _cycleLength => widget.repository.cycleLength;
@@ -41,6 +56,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   void dispose() {
+    _mascotBounceTimer?.cancel();
     _noteController.dispose();
     super.dispose();
   }
@@ -77,6 +93,21 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   CyclePhase get _phase => widget.repository.phaseOf(widget.repository.today);
+
+  void _onMascotTap() {
+    final choices = List<int>.generate(_mascotMessages.length, (index) => index)
+      ..remove(_mascotMessageIndex);
+    final nextIndex = choices[_random.nextInt(choices.length)];
+
+    _mascotBounceTimer?.cancel();
+    setState(() {
+      _mascotMessageIndex = nextIndex;
+      _mascotIsBouncing = true;
+    });
+    _mascotBounceTimer = Timer(const Duration(milliseconds: 260), () {
+      if (mounted) setState(() => _mascotIsBouncing = false);
+    });
+  }
 
   void _toggleSymptom(int index) {
     setState(() {
@@ -321,10 +352,60 @@ class _DashboardPageState extends State<DashboardPage> {
                     shape: BoxShape.circle,
                   ),
                 ),
-                LottieMascot(phase: phase, size: 150),
+                GestureDetector(
+                  key: const Key('dashboard-mascot'),
+                  onTap: _onMascotTap,
+                  child: Semantics(
+                    button: true,
+                    label: 'Kelinci ShePeriod, ketuk untuk pesan penyemangat',
+                    child: AnimatedScale(
+                      scale: _mascotIsBouncing ? 1.12 : 1,
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.elasticOut,
+                      child: LottieMascot(phase: phase, size: 150),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
+          if (_mascotMessageIndex != null) ...[
+            const SizedBox(height: 8),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              switchInCurve: Curves.easeOutBack,
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(scale: animation, child: child),
+              ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: PinkPalette.softBabyPink,
+                  borderRadius: BorderRadius.circular(kCuteRadius),
+                  border: Border.all(color: PinkPalette.blush),
+                ),
+                child: Text(
+                  _mascotMessages[_mascotMessageIndex!].replaceAll(
+                    'Putri',
+                    widget.repository.userName.isEmpty
+                        ? 'Putri'
+                        : widget.repository.userName,
+                  ),
+                  key: const Key('mascot-message'),
+                  textAlign: TextAlign.center,
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: PinkPalette.deepRose,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
           Text(
             phase.note,
             textAlign: TextAlign.center,

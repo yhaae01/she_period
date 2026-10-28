@@ -121,6 +121,21 @@ void main() {
     expect(find.textContaining('Temanmu hari ini'), findsOneWidget);
     expect(find.text('Catat Hari Ini 💗'), findsOneWidget);
 
+    await tester.ensureVisible(find.byKey(const Key('dashboard-mascot')));
+    await tester.tap(find.byKey(const Key('dashboard-mascot')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const Key('mascot-message')), findsOneWidget);
+    final firstMascotMessage = tester
+        .widget<Text>(find.byKey(const Key('mascot-message')))
+        .data;
+    expect(firstMascotMessage, isNotEmpty);
+    await tester.tap(find.byKey(const Key('dashboard-mascot')));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(
+      tester.widget<Text>(find.byKey(const Key('mascot-message'))).data,
+      isNot(firstMascotMessage),
+    );
+
     // maskot memakai animasi Lottie (asset berhasil dimuat, bukan fallback)
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.byType(Lottie), findsOneWidget);
